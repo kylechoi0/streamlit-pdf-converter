@@ -140,7 +140,7 @@ def main():
                     text = extract_text_from_pdf(BytesIO(uploaded_file.read()))
                 progress_bar.progress(25)
                 
-                status_text.text("API로 텍스트를 처리 중...")
+                status_text.text("마크다운으로 문서를 변환중...")
                 
                 async def update_progress(progress, message, status):
                     progress_bar.progress(25 + int(progress * 75))
