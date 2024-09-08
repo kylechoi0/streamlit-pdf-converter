@@ -60,7 +60,7 @@ async def process_chunk(session, chunk, chunk_index, total_chunks):
     }
     data = {
         "inputs": {"context": chunk},
-        "query": f"프롬프트에 따라 context를 markdown 서식으로 변환한다. 변환 시 원문을 ### 마크다운 서식과 함께 표시한다. 이 청크는 전체 {total_chunks} 중 {chunk_index + 1}번째입니다.",
+        "query": f"프롬프트에 따라 context를 markdown 서식으로 변환한다. 변환 시 원문을 ### 마크다운 서식과 함께 코드블럭으로 출력한다. 제공된 텍스트와 동일한 언어를 사용한다. 이 청크는 전체 {total_chunks} 중 {chunk_index + 1}번째입니다.",
         "response_mode": "streaming",
         "conversation_id": "",
         "user": "pdf_converter"
@@ -92,7 +92,7 @@ async def process_chunk(session, chunk, chunk_index, total_chunks):
         return ""
 
 async def process_text(text, progress_callback):
-    chunk_size = 2000
+    chunk_size = 6000  # chunk_size를 6000으로 증가
     chunks = [text[i:i+chunk_size] for i in range(0, len(text), chunk_size)]
     total_chunks = len(chunks)
     results = []
