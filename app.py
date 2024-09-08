@@ -60,7 +60,7 @@ async def process_chunk(session, chunk, chunk_index, total_chunks):
     }
     data = {
         "inputs": {"context": chunk},
-        "query": f"프롬프트에 따라 context를 markdown 서식으로 변환한다. 변환 시 원문을 ### 마크다운 서식과 함께 코드블럭으로 출력한다. 제공된 텍스트와 동일한 언어를 사용한다. 이 청크는 전체 {total_chunks} 중 {chunk_index + 1}번째입니다.",
+        "query": f"프롬프트에 따라 제공된 context를 빠짐없이 markdown 서식으로 변환하여 코드블럭으로 출력한다. 제공된 텍스트와 동일한 언어를 사용한다. 천천히 단계 별로 작업한다. 참고 : 이 청크는 전체 {total_chunks} 중 {chunk_index + 1}번째입니다.",
         "response_mode": "streaming",
         "conversation_id": "",
         "user": "pdf_converter"
@@ -92,19 +92,20 @@ async def process_chunk(session, chunk, chunk_index, total_chunks):
         return ""
 
 async def process_text(text, progress_callback):
-    chunk_size = 6000  # chunk_size를 6000으로 증가
+    chunk_size = 6000
     chunks = [text[i:i+chunk_size] for i in range(0, len(text), chunk_size)]
     total_chunks = len(chunks)
     results = []
     
     async with aiohttp.ClientSession() as session:
         for i, chunk in enumerate(chunks):
+            progress_callback((i + 1) / total_chunks, f"청크 {i + 1}/{total_chunks} 처리 중...", "processing")
             result = await process_chunk(session, chunk, i, total_chunks)
             if result:
                 results.append(result)
-            progress_callback((i + 1) / total_chunks, f"청크 {i + 1}/{total_chunks} 처리 완료")
+            progress_callback((i + 1) / total_chunks, f"청크 {i + 1}/{total_chunks} 처리 완료", "completed")
     
-    return "\n\n".join(results)
+    return "\n\n".join(results), total_chunks
 
 def extract_text_from_pdf(file):
     text = ""
@@ -133,6 +134,7 @@ def main():
             if st.button("🔄 Markdown으로 변환"):
                 progress_bar = st.progress(0)
                 status_text = st.empty()
+                chunk_status = st.empty()
                 
                 with st.spinner("PDF에서 텍스트를 추출 중..."):
                     text = extract_text_from_pdf(BytesIO(uploaded_file.read()))
@@ -140,17 +142,21 @@ def main():
                 
                 status_text.text("API로 텍스트를 처리 중...")
                 
-                async def update_progress(progress, message):
+                async def update_progress(progress, message, status):
                     progress_bar.progress(25 + int(progress * 75))
                     status_text.text(message)
+                    if status == "processing":
+                        chunk_status.warning(message)
+                    elif status == "completed":
+                        chunk_status.success(message)
                 
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
-                result = loop.run_until_complete(process_text(text, update_progress))
+                result, total_chunks = loop.run_until_complete(process_text(text, update_progress))
                 
                 if result:
                     progress_bar.progress(100)
-                    st.success("✨ 변환 완료!")
+                    st.success(f"✨ 변환 완료! 총 {total_chunks}개의 청크가 처리되었습니다.")
                     
                     st.download_button(
                         label="📥 Markdown 파일 다운로드",
